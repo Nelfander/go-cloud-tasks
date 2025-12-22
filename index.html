@@ -1,0 +1,36 @@
+<html>
+
+<body style="font-family: sans-serif; padding: 20px; background-color: #f4f4f9;">
+    <h1>✅ My Go Task Manager</h1>
+
+    <div id="tasks">
+        Loading...
+    </div>
+
+    <script>
+        function fetchTasks() {
+            fetch('/tasks')
+                .then(response => {
+                    if (!response.ok) throw new Error("Network error");
+                    return response.json();
+                })
+                .then(data => {
+                    const div = document.getElementById('tasks');
+                    // This maps your JSON data to HTML paragraphs
+                    div.innerHTML = data.map(t =>
+                        `<p style="font-size: 1.2rem;">
+                                ${t.IsDone ? '<span style="color:green;">✔</span>' : '<span style="color:gray;">○</span>'} 
+                                <strong>${t.Title}</strong>
+                            </p>`
+                    ).join('');
+                })
+                .catch(err => console.error("Fetch error:", err));
+        }
+
+        // This runs the function every 2000 milliseconds (2 seconds)
+        setInterval(fetchTasks, 2000);
+        fetchTasks(); 
+    </script>
+</body>
+
+</html>

@@ -1,0 +1,6 @@
+# Ignore the executable file
+main
+*.exe
+
+# Ignore the data file (usually you don't want to push your personal task list)
+tasks.json
