@@ -1,35 +1,160 @@
-<html>
+<!DOCTYPE html>
+<html lang="en">
 
-<body style="font-family: sans-serif; padding: 20px; background-color: #f4f4f9;">
-    <h1>✅ My Go Task Manager</h1>
+<head>
+    <meta charset="UTF-8">
+    <title>Go Cloud Tasks</title>
+    <style>
+        body {
+            font-family: sans-serif;
+            background: #f4f7f6;
+            display: flex;
+            justify-content: center;
+            padding: 50px;
+        }
 
-    <div id="tasks">
-        Loading...
+        .container {
+            background: white;
+            padding: 2rem;
+            border-radius: 8px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            width: 450px;
+        }
+
+        h2 {
+            border-bottom: 2px solid #eee;
+            padding-bottom: 10px;
+            color: #333;
+            text-align: center;
+        }
+
+        /* Input Area */
+        .input-group {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+
+        input {
+            flex: 1;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+
+        .add-btn {
+            background: #28a745;
+            color: white;
+            border: none;
+            padding: 10px 15px;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+
+        /* Task List */
+        .task-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px;
+            border-bottom: 1px solid #eee;
+        }
+
+        .done-text {
+            text-decoration: line-through;
+            color: #888;
+        }
+
+        /* Buttons */
+        .action-btns {
+            display: flex;
+            gap: 5px;
+        }
+
+        .btn {
+            border: 1px solid #ddd;
+            background: #fff;
+            padding: 5px 8px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 1.1rem;
+        }
+
+        .btn:hover {
+            background: #f0f0f0;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <h2>☁️ Task Manager</h2>
+
+        <div class="input-group">
+            <input type="text" id="taskInput" placeholder="Enter a new task...">
+            <button class="add-btn" onclick="addTask()">Add Task</button>
+        </div>
+
+        <div id="task-list">Loading...</div>
     </div>
 
     <script>
-        function fetchTasks() {
-            fetch('/tasks')
-                .then(response => {
-                    if (!response.ok) throw new Error("Network error");
-                    return response.json();
-                })
-                .then(data => {
-                    const div = document.getElementById('tasks');
-                    // This maps your JSON data to HTML paragraphs
-                    div.innerHTML = data.map(t =>
-                        `<p style="font-size: 1.2rem;">
-                                ${t.IsDone ? '<span style="color:green;">✔</span>' : '<span style="color:gray;">○</span>'} 
-                                <strong>${t.Title}</strong>
-                            </p>`
-                    ).join('');
-                })
-                .catch(err => console.error("Fetch error:", err));
+        async function loadTasks() {    // Fetch tasks from the server
+            try {
+                const response = await fetch('/tasks');
+                const tasks = await response.json();
+                const listDiv = document.getElementById('task-list');
+                listDiv.innerHTML = '';
+
+                if (tasks.length === 0) {
+                    listDiv.innerHTML = "<p style='text-align:center; color: #999;'>No tasks yet!</p>";
+                    return;
+                }
+
+                tasks.forEach(task => {     // Create task item
+                    const item = document.createElement('div');
+                    item.className = 'task-item';
+                    item.innerHTML = `
+                        <span class="${task.is_done ? 'done-text' : ''}">${task.title}</span>
+                        <div class="action-btns">
+                            <button class="btn" onclick="toggleDone(${task.id})" title="Mark Done">
+                                ${task.is_done ? '✅' : '⏳'}
+                            </button>
+                            <button class="btn" onclick="deleteTask(${task.id})" title="Delete">🗑️</button>
+                        </div>
+                    `;
+                    listDiv.appendChild(item);
+                });
+            } catch (err) {
+                console.error("Error loading tasks:", err);
+            }
         }
 
-        // This runs the function every 2000 milliseconds (2 seconds)
-        setInterval(fetchTasks, 2000);
-        fetchTasks(); 
+        async function addTask() {      // Add a new task
+            const input = document.getElementById('taskInput');
+            if (!input.value) return;
+
+            // Note: Sending title as a query parameter
+            await fetch(`/create?title=${encodeURIComponent(input.value)}`, { method: 'POST' });
+            input.value = '';
+            loadTasks();
+        }
+
+        async function toggleDone(id) {     // Toggle task completion
+            await fetch(`/update?id=${id}`, { method: 'POST' });
+            loadTasks();
+        }
+
+        async function deleteTask(id) {         // Delete a task
+            if (confirm("Delete this task?")) {
+                await fetch(`/delete?id=${id}`, { method: 'POST' });
+                loadTasks();
+            }
+        }
+
+        loadTasks();
+        // Refresh every 5 seconds
+        setInterval(loadTasks, 5000);
     </script>
 </body>
 

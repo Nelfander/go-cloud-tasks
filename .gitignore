@@ -1,6 +1,10 @@
 # Ignore the executable file
 main
+task-key.pem
+*.pem
+myapp
+myapp-linux
 *.exe
-
+.env
 # Ignore the data file (usually you don't want to push your personal task list)
 tasks.json
