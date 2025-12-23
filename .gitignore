@@ -4,6 +4,7 @@ task-key.pem
 *.pem
 myapp
 myapp-linux
+output.log
 *.exe
 .env
 # Ignore the data file (usually you don't want to push your personal task list)
