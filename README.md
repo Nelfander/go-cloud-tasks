@@ -41,7 +41,19 @@ $env:GOOS="linux"; $env:GOARCH="amd64"; go build -o myapp-linux
 It is deployed to EC2 and kept alive as a background process to ensure 100% uptime.
 
 📸 Preview
-Live Demo: [Insert your AWS IP here, e.g., http://16.171.16.175:8080]
+Live Demo: [http://16.171.16.175/]
+
+
+Development Milestones :
+## 🚀 Recent Milestones
+
+### 🛠️ Infrastructure & DevOps
+* **Fixed Critical Server Outage:** Diagnosed a "Disk Pressure" event on AWS (100% disk usage). Used `lsof` to identify "zombie" processes holding deleted 6.4GB log files and reclaimed system stability.
+* **Containerized Go Backend:** Architected a `Dockerfile` to package the application, ensuring environment consistency between local development and production.
+* **Streamlined Deployment Workflow:** Implemented a Docker Hub "Push/Pull" pipeline to bridge the local environment with AWS EC2.
+* **Networking & Security:** Configured Docker Port Mapping (`80:8080`) and optimized AWS Security Groups to allow public HTTP traffic on Port 80.
+
+
 
 📈 Roadmap
 [1] Dockerization: Containerize the app for easier scaling.
