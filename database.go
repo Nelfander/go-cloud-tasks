@@ -8,6 +8,7 @@ import (
 
 	_ "github.com/jackc/pgx/v5/stdlib" // Import pgx driver
 	"github.com/joho/godotenv"
+	"golang.org/x/crypto/bcrypt"
 )
 
 var db *sql.DB
@@ -38,6 +39,21 @@ func initDB() { // Initialize the database connection
 		panic(err)
 	}
 	fmt.Println("Cloud Database connected and table ready!")
+}
+
+func RegisterUser(username, password string) error { // 	Function to register a new user
+	// Hash the password (cost 10 is the industry standard)
+	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
+	if err != nil {
+		return err
+	}
+
+	// Insert into the "users" table
+	// I use $1 and $2 to prevent SQL Injection
+	query := `INSERT INTO users (username, password_hash) VALUES ($1, $2)`
+	_, err = db.Exec(query, username, string(hashedPassword))
+
+	return err
 }
 
 // GetAllTasks fetches everything from the cloud

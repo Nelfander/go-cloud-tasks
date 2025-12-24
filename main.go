@@ -19,6 +19,7 @@ func main() {
 		http.HandleFunc("/update", handleUpdateTask) // Handle /update endpoint
 		http.HandleFunc("/create", handleCreateTask) // Handle /create endpoint
 		http.HandleFunc("/delete", handleDeleteTask) // Handle /delete endpoint
+		http.HandleFunc("/register", handleRegister) // Handle /register endpoint
 
 		http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 			http.ServeFile(w, r, "index.html") // Serve the HTML file

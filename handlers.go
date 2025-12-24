@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"strconv"
 )
@@ -82,10 +83,35 @@ func handleDeleteTask(w http.ResponseWriter, r *http.Request) {
 	idStr := r.URL.Query().Get("id")
 	id, _ := strconv.Atoi(idStr)
 
-	err := DeleteTask(id) // Your clean function from database.go
+	err := DeleteTask(id) //  clean function from database.go
 	if err != nil {
 		http.Error(w, err.Error(), 500)
 		return
 	}
 	w.WriteHeader(http.StatusOK)
+}
+
+func handleRegister(w http.ResponseWriter, r *http.Request) { // New handler for user registration
+	if r.Method == http.MethodGet {
+		// Show the registration form
+		http.ServeFile(w, r, "register.html")
+		return
+	}
+
+	if r.Method == http.MethodPost {
+		// Grab values from the HTML form
+		username := r.FormValue("username")
+		password := r.FormValue("password")
+
+		// Use the logic from database.go to save to Neon
+		err := RegisterUser(username, password)
+		if err != nil {
+			// If the username is already in the DB, this will trigger
+			http.Error(w, "Registration failed. Username might be taken.", http.StatusBadRequest)
+			return
+		}
+
+		// Success message
+		fmt.Fprintf(w, "Success! User %s created. Happy Christmas Eve!", username)
+	}
 }
