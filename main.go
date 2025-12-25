@@ -15,11 +15,12 @@ func main() {
 	initDB() // Initialize the database connection
 
 	go func() { // Start a web server in a separate goroutine
-		http.HandleFunc("/tasks", handleTasks)       // Handle /tasks endpoint
-		http.HandleFunc("/update", handleUpdateTask) // Handle /update endpoint
-		http.HandleFunc("/create", handleCreateTask) // Handle /create endpoint
-		http.HandleFunc("/delete", handleDeleteTask) // Handle /delete endpoint
-		http.HandleFunc("/register", handleRegister) // Handle /register endpoint
+		http.HandleFunc("/tasks", authMiddleware(handleTasks))       // Handle /tasks endpoint   authmiddleware to protect the route
+		http.HandleFunc("/update", authMiddleware(handleUpdateTask)) // Handle /update endpoint
+		http.HandleFunc("/create", authMiddleware(handleCreateTask)) // Handle /create endpoint
+		http.HandleFunc("/delete", authMiddleware(handleDeleteTask)) // Handle /delete endpoint
+		http.HandleFunc("/register", handleRegister)                 // Handle /register endpoint
+		http.HandleFunc("/login", handleLogin)                       // Handle /login endpoint
 
 		http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 			http.ServeFile(w, r, "index.html") // Serve the HTML file

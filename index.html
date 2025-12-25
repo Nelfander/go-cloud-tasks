@@ -99,30 +99,50 @@
     </div>
 
     <script>
-        async function loadTasks() {    // Fetch tasks from the server
+        //  GET THE TOKEN AT THE TOP
+        const token = localStorage.getItem('my_jwt_token');
+
+        async function loadTasks() {
+            //  REDIRECT IF NO TOKEN
+            if (!token) {
+                window.location.href = '/login';
+                return;
+            }
+
             try {
-                const response = await fetch('/tasks');
+                const response = await fetch('/tasks', {
+                    // ATTACH THE TOKEN IN THE HEADER
+                    headers: { 'Authorization': 'Bearer ' + token }
+                });
+
+                //  IF TOKEN IS EXPIRED OR INVALID, LOG OUT
+                if (response.status === 401) {
+                    localStorage.removeItem('my_jwt_token');
+                    window.location.href = '/login';
+                    return;
+                }
+
                 const tasks = await response.json();
                 const listDiv = document.getElementById('task-list');
                 listDiv.innerHTML = '';
 
-                if (tasks.length === 0) {
+                if (!tasks || tasks.length === 0) {
                     listDiv.innerHTML = "<p style='text-align:center; color: #999;'>No tasks yet!</p>";
                     return;
                 }
 
-                tasks.forEach(task => {     // Create task item
+                tasks.forEach(task => {
                     const item = document.createElement('div');
                     item.className = 'task-item';
                     item.innerHTML = `
-                        <span class="${task.is_done ? 'done-text' : ''}">${task.title}</span>
-                        <div class="action-btns">
-                            <button class="btn" onclick="toggleDone(${task.id})" title="Mark Done">
-                                ${task.is_done ? '✅' : '⏳'}
-                            </button>
-                            <button class="btn" onclick="deleteTask(${task.id})" title="Delete">🗑️</button>
-                        </div>
-                    `;
+                    <span class="${task.is_done ? 'done-text' : ''}">${task.title}</span>
+                    <div class="action-btns">
+                        <button class="btn" onclick="toggleDone(${task.id})" title="Mark Done">
+                            ${task.is_done ? '✅' : '⏳'}
+                        </button>
+                        <button class="btn" onclick="deleteTask(${task.id})" title="Delete">🗑️</button>
+                    </div>
+                `;
                     listDiv.appendChild(item);
                 });
             } catch (err) {
@@ -130,24 +150,35 @@
             }
         }
 
-        async function addTask() {      // Add a new task
+        async function addTask() {
             const input = document.getElementById('taskInput');
             if (!input.value) return;
 
-            // Note: Sending title as a query parameter
-            await fetch(`/create?title=${encodeURIComponent(input.value)}`, { method: 'POST' });
+            await fetch(`/create?title=${encodeURIComponent(input.value)}`, {
+                method: 'POST',
+                // MUST SEND TOKEN HERE TOO!
+                headers: { 'Authorization': 'Bearer ' + token }
+            });
             input.value = '';
             loadTasks();
         }
 
-        async function toggleDone(id) {     // Toggle task completion
-            await fetch(`/update?id=${id}`, { method: 'POST' });
+        async function toggleDone(id) { // Toggle task done status
+            await fetch(`/update?id=${id}`, {
+                method: 'POST',
+                // AND HERE
+                headers: { 'Authorization': 'Bearer ' + token }
+            });
             loadTasks();
         }
 
-        async function deleteTask(id) {         // Delete a task
+        async function deleteTask(id) { // Delete a task
             if (confirm("Delete this task?")) {
-                await fetch(`/delete?id=${id}`, { method: 'POST' });
+                await fetch(`/delete?id=${id}`, {
+                    method: 'POST',
+                    // AND HERE
+                    headers: { 'Authorization': 'Bearer ' + token }
+                });
                 loadTasks();
             }
         }

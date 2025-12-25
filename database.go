@@ -56,6 +56,15 @@ func RegisterUser(username, password string) error { // 	Function to register a 
 	return err
 }
 
+func GetUserByUsername(username string) (taskmanager.User, error) { // Function to get a user by username
+	var u taskmanager.User
+	query := `SELECT id, username, password_hash FROM users WHERE username = $1`
+
+	//  QueryRow because we only expect ONE user
+	err := db.QueryRow(query, username).Scan(&u.ID, &u.Username, &u.PasswordHash)
+	return u, err
+}
+
 // GetAllTasks fetches everything from the cloud
 
 // function to not reuse the same code for showing all tasks
@@ -93,4 +102,23 @@ func UpdateTaskStatus(id int, status bool) error {
 func DeleteTask(id int) error {
 	_, err := db.Exec("DELETE FROM tasks WHERE id = $1", id)
 	return err
+}
+
+func GetTasksByUserID(userID int) ([]taskmanager.Task, error) { // Function to get tasks for a specific user
+	// We filter by user_id
+	rows, err := db.Query("SELECT id, title, is_done FROM tasks WHERE user_id = $1", userID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var tasks []taskmanager.Task
+	for rows.Next() {
+		var t taskmanager.Task
+		if err := rows.Scan(&t.ID, &t.Title, &t.IsDone); err != nil {
+			return nil, err
+		}
+		tasks = append(tasks, t)
+	}
+	return tasks, nil
 }

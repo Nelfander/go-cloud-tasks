@@ -5,6 +5,8 @@ task-key.pem
 myapp
 myapp-linux
 output.log
+.DS_Store
+Thumbs.db
 *.exe
 .env
 # Ignore the data file (usually you don't want to push your personal task list)
