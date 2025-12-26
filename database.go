@@ -27,7 +27,7 @@ func initDB() { // Initialize the database connection
 		panic(err) // Handle connection error
 	}
 
-	// This part stays the same—it creates the table in the cloud!
+	//  creates the table in the cloud!
 	query := `
 	CREATE TABLE IF NOT EXISTS tasks (
 		id SERIAL PRIMARY KEY,
@@ -121,4 +121,20 @@ func GetTasksByUserID(userID int) ([]taskmanager.Task, error) { // Function to g
 		tasks = append(tasks, t)
 	}
 	return tasks, nil
+}
+
+func ToggleTaskSafe(taskID int, userID int) error { // Function to toggle task status with user ownership check
+	// I use AND user_id = $2 to ensure ownership
+	result, err := db.Exec("UPDATE tasks SET is_done = NOT is_done WHERE id = $1 AND user_id = $2", taskID, userID)
+	if err != nil {
+		return err
+	}
+
+	// Check if any row was actually changed
+	rowsAffected, _ := result.RowsAffected()
+	if rowsAffected == 0 {
+		return fmt.Errorf("task not found or unauthorized")
+	}
+
+	return nil // Success
 }

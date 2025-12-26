@@ -57,20 +57,20 @@ func handleTasks(w http.ResponseWriter, r *http.Request) {
 }
 
 func handleUpdateTask(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodPost {
-		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
-		return
-	}
+	// Get the UserID from the JWT context
+	userID := r.Context().Value("userID").(int)
 
-	// Get the ID from the URL (e.g., /update?id=10)
+	//  Get the Task ID from the URL
 	idStr := r.URL.Query().Get("id")
-	id, _ := strconv.Atoi(idStr) // Convert to integer
+	taskID, _ := strconv.Atoi(idStr) // Convert to int
 
-	err := UpdateTaskStatus(id, true) // Using your clean function!
+	//  Pass BOTH to the database
+	err := ToggleTaskSafe(taskID, userID)
 	if err != nil {
-		http.Error(w, err.Error(), 500)
+		http.Error(w, "Could not update task: "+err.Error(), http.StatusForbidden) // 403 if not allowed
 		return
 	}
+
 	w.WriteHeader(http.StatusOK)
 }
 
@@ -80,7 +80,7 @@ func handleCreateTask(w http.ResponseWriter, r *http.Request) { // Handler to cr
 		return
 	}
 
-	// 1. Get the User ID from the context (just like in handleTasks)
+	//  Get the User ID from the context (just like in handleTasks)
 	userID := r.Context().Value("userID").(int)
 
 	title := r.URL.Query().Get("title")
@@ -89,7 +89,7 @@ func handleCreateTask(w http.ResponseWriter, r *http.Request) { // Handler to cr
 		return
 	}
 
-	// 2. Pass the userID into your Save function
+	//  Pass the userID into your Save function
 	err := SaveTask(title, userID)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -107,49 +107,73 @@ func SaveTask(title string, userID int) error { // Updated Save function to incl
 }
 
 func handleDeleteTask(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodPost {
-		http.Error(w, "Method not allowed", 405)
-		return
-	}
+	//if r.Method != http.MethodPost {
+	//	http.Error(w, "Method not allowed", 405)
+	//	return
+	//}
 
-	idStr := r.URL.Query().Get("id")
-	id, _ := strconv.Atoi(idStr)
+	userID := r.Context().Value("userID").(int) // Get UserID from context
+	idStr := r.URL.Query().Get("id")            // Get Task ID from URL
+	taskID, _ := strconv.Atoi(idStr)            // Convert to int
 
-	err := DeleteTask(id) //  clean function from database.go
+	// Safe delete
+	result, err := db.Exec("DELETE FROM tasks WHERE id = $1 AND user_id = $2", taskID, userID) // Ensure ownership
 	if err != nil {
 		http.Error(w, err.Error(), 500)
 		return
 	}
+
+	rowsAffected, _ := result.RowsAffected() // Check if any row was deleted
+	if rowsAffected == 0 {
+		http.Error(w, "Unauthorized to delete this task", http.StatusForbidden)
+		return
+	}
+
 	w.WriteHeader(http.StatusOK)
 }
 
 func handleRegister(w http.ResponseWriter, r *http.Request) { // New handler for user registration
 	if r.Method == http.MethodGet {
-		// Show the registration form
 		http.ServeFile(w, r, "register.html")
 		return
 	}
 
-	if r.Method == http.MethodPost {
-		// Grab values from the HTML form
-		username := r.FormValue("username")
-		password := r.FormValue("password")
+	// Parse form data from the fetch request
+	r.ParseMultipartForm(10 << 20)
+	username := r.FormValue("username")
+	password := r.FormValue("password")
 
-		// Use the logic from database.go to save to Neon
-		err := RegisterUser(username, password)
-		if err != nil {
-			// If the username is already in the DB, this will trigger
-			http.Error(w, "Registration failed. Username might be taken.", http.StatusBadRequest)
-			return
-		}
-
-		// Success message
-		fmt.Fprintf(w, "Success! User %s created. Happy Christmas Eve!", username)
+	//  Validate input
+	if len(username) < 3 || len(password) < 6 {
+		http.Error(w, "Username (3+) or password (6+) too short", http.StatusBadRequest)
+		return
 	}
+
+	//  Hash the password
+	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
+	if err != nil {
+		http.Error(w, "Error processing password", http.StatusInternalServerError)
+		return
+	}
+
+	//  Insert into Database
+	_, err = db.Exec("INSERT INTO users (username, password_hash) VALUES ($1, $2)", username, string(hashedPassword))
+
+	if err != nil {
+		// handle the "Username taken" error
+		// Different drivers use different error checks, but checking for
+		// string "unique_violation" or "duplicate key" is a safe bet for now.
+		log.Printf("Register error: %v", err)
+		http.Error(w, "That username is already taken. Try another!", http.StatusConflict)
+		return
+	}
+
+	w.WriteHeader(http.StatusCreated)
+	fmt.Fprint(w, "Success")
 }
 
 func handleLogin(w http.ResponseWriter, r *http.Request) { // New handler for user login
-	log.Println("--- Login Attempt Started ---") // Step 0 for debugging
+
 	if r.Method == http.MethodGet {
 		http.ServeFile(w, r, "login.html")
 		return
@@ -165,13 +189,13 @@ func handleLogin(w http.ResponseWriter, r *http.Request) { // New handler for us
 	//  Get credentials from form
 	username := r.FormValue("username")
 	password := r.FormValue("password")
-	log.Printf("Step 1: Received data for user: %s\n", username) // Step 1 for debugging
+
 	fmt.Printf("Login attempt for user: %s\n", username)
 
 	//  Look up user in DB
 	user, err := GetUserByUsername(username)
 	if err != nil {
-		log.Printf("Step 2 Error: User not found or DB error: %v\n", err) // Step 2 for debugging
+
 		http.Error(w, "Invalid username or password", http.StatusUnauthorized)
 		return
 	}
@@ -179,7 +203,7 @@ func handleLogin(w http.ResponseWriter, r *http.Request) { // New handler for us
 	//  Compare Password with Hash from the DB
 	err = bcrypt.CompareHashAndPassword([]byte(user.PasswordHash), []byte(password))
 	if err != nil {
-		log.Println("Step 3 Error: Password does not match") //		 Step 3 for debugging
+
 		// WHAT IF: The password is wrong?
 		http.Error(w, "Invalid username or password", http.StatusUnauthorized)
 		return
@@ -191,7 +215,6 @@ func handleLogin(w http.ResponseWriter, r *http.Request) { // New handler for us
 		"username": user.Username,
 		"exp":      time.Now().Add(time.Hour * 24).Unix(), // Expires in 24 hours
 	})
-	log.Println("Step 3: Password verified") // step 4 for debugging
 
 	// Sign the token with the secret key
 	tokenString, err := token.SignedString(getJWTSecret()) // Use the function to get secret
@@ -200,14 +223,13 @@ func handleLogin(w http.ResponseWriter, r *http.Request) { // New handler for us
 		return
 	}
 
-	log.Println("Step 4: JWT created successfully") // Step 5 for debugging
 	//  Send it back to the user
 	w.Header().Set("Content-Type", "application/json")
 
 	json.NewEncoder(w).Encode(map[string]string{
-		"token": tokenString,
+		"token":    tokenString,
+		"username": username, // update username to display on the dashboard
 	})
-	log.Println("Step 5: JSON response sent to browser") // Step 6 for debugging
 
 }
 

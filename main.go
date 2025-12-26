@@ -57,5 +57,6 @@ func showTasksAndPopulateMap(idMap map[int]int) { // Helper function to show tas
 			status = "✅"
 		}
 		fmt.Printf("%-5d %-20s %-10s\n", displayNum, t.Title, status)
+
 	}
 }

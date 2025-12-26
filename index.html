@@ -1,6 +1,8 @@
 <!DOCTYPE html>
 <html lang="en">
 
+
+
 <head>
     <meta charset="UTF-8">
     <title>Go Cloud Tasks</title>
@@ -87,7 +89,14 @@
 </head>
 
 <body>
+
     <div class="container">
+        <header style="display: flex; justify-content: space-between; align-items: center;">
+            <h1 id="welcomeGreeting" style="margin: 0; font-size: 1.5rem;">My Tasks</h1>
+            <button id="logoutBtn" class="btn" style="background-color: #ff4d4d; color: white;">Logout</button>
+        </header>
+
+
         <h2>☁️ Task Manager</h2>
 
         <div class="input-group">
@@ -99,15 +108,36 @@
     </div>
 
     <script>
-        //  GET THE TOKEN AT THE TOP
+        // get data at the top  
         const token = localStorage.getItem('my_jwt_token');
+        const username = localStorage.getItem('my_username');
+
+        // immediate redirect if no token
+        if (!token) {
+            window.location.href = '/login';
+        }
+
+        //  welcome greeting
+        if (username) {
+            const greetingElement = document.getElementById('welcomeGreeting');
+            if (greetingElement) {
+
+                greetingElement.innerText = `Welcome, ${username}!`;
+            }
+        }
+
+        //  logout logic
+        const logoutBtn = document.getElementById('logoutBtn');
+        if (logoutBtn) {
+            logoutBtn.addEventListener('click', () => {
+                localStorage.removeItem('my_jwt_token');
+                localStorage.removeItem('my_username');
+                window.location.href = '/login';
+            });
+        }
 
         async function loadTasks() {
-            //  REDIRECT IF NO TOKEN
-            if (!token) {
-                window.location.href = '/login';
-                return;
-            }
+            if (!token) return; // Extra safety
 
             try {
                 const response = await fetch('/tasks', {
