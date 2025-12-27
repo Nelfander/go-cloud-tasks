@@ -24,4 +24,4 @@ COPY --from=builder /app/*.html ./
 
 
 EXPOSE 8080
-CMD ["./main"]
+CMD ["./main"]      

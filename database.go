@@ -3,6 +3,7 @@ package main
 import (
 	"database/sql"
 	"fmt"
+	"log"
 	"os"
 	"task-app/taskmanager"
 
@@ -14,26 +15,33 @@ import (
 var db *sql.DB
 
 func initDB() { // Initialize the database connection
-	// This looks for the .env file and loads it into the system
-	err := godotenv.Load()
-	if err != nil {
-		fmt.Println("Error loading .env file")
-	}
+	// Load .env for local development
+	_ = godotenv.Load()
 
 	connStr := os.Getenv("DB_URL") // Get the connection string from environment variable
-
+	var err error
 	db, err = sql.Open("pgx", connStr) // Use pgx driver
 	if err != nil {
 		panic(err) // Handle connection error
 	}
-
-	//  creates the table in the cloud!
+	// Ping the database to ensure the connection string is valid
+	err = db.Ping()
+	if err != nil {
+		log.Fatalf("Cannot connect to DB: %v", err)
+	}
+	// Create BOTH tables
 	query := `
-	CREATE TABLE IF NOT EXISTS tasks (
-		id SERIAL PRIMARY KEY,
-		title TEXT NOT NULL,
-		is_done BOOLEAN DEFAULT FALSE
-	);`
+    CREATE TABLE IF NOT EXISTS users (
+        id SERIAL PRIMARY KEY,
+        username TEXT UNIQUE NOT NULL,
+        password_hash TEXT NOT NULL
+    );
+    CREATE TABLE IF NOT EXISTS tasks (
+        id SERIAL PRIMARY KEY,
+        title TEXT NOT NULL,
+        is_done BOOLEAN DEFAULT FALSE,
+        user_id INTEGER REFERENCES users(id)
+    );`
 	_, err = db.Exec(query)
 	if err != nil {
 		panic(err)
